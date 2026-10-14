@@ -6,4 +6,5 @@ export default defineConfig({
     // host: true exposes the server on the local network so a phone can join.
     server: { host: true },
     preview: { host: true },
+    base: '/piano/',
 });
