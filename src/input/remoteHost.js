@@ -1,4 +1,5 @@
 import { input } from '../core/input.js';
+import { settings } from '../core/settings.js';
 
 // Game side of the phone keyboard: joins a relay room as "host" and turns the
 // phone's messages into ordinary note events.
@@ -86,7 +87,9 @@ export const remoteHost = {
         }
         this.room = roomCode();
         const port = location.port ? `:${location.port}` : '';
-        this.url = `${location.protocol}//${host}${port}/?remote=${this.room}`;
+        // The phone page copies the game's theme, language and note names.
+        const prefs = new URLSearchParams({ remote: this.room, theme: settings.theme, lang: settings.lang, names: settings.naming });
+        this.url = `${location.protocol}//${host}${port}/?${prefs}`;
         wanted = true;
         connect();
     },

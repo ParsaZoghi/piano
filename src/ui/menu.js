@@ -1,3 +1,4 @@
+import { t } from '../core/i18n.js';
 import { typing } from '../input/typing.js';
 import { LESSONS } from '../game/lessons.js';
 import { progress } from '../game/progress.js';
@@ -13,24 +14,24 @@ export function mountMenu({ scene, ui, openDevices }) {
         <main class="menu">
             <div class="menu__brand">
                 <span class="menu__logo">${icon('music')}</span>
-                <h1 tabindex="-1">Keystage</h1>
-                <p>Learn piano notes and rhythm, one small win at a time. All you need is this keyboard.</p>
+                <h1 tabindex="-1" lang="en">Keystage</h1>
+                <p>${t('menu.tagline')}</p>
             </div>
-            <nav class="menu__actions" aria-label="Main menu">
+            <nav class="menu__actions" aria-label="${t('menu.nav')}">
                 <a class="choice" href="#/free">
                     <span class="choice__icon">${icon('play')}</span>
-                    <span class="choice__text"><strong>Free play</strong><span>The full 88-key piano. No goals, just play.</span></span>
+                    <span class="choice__text"><strong>${t('menu.free')}</strong><span>${t('menu.freeSub')}</span></span>
                     ${icon('next', 'choice__arrow')}
                 </a>
                 <a class="choice choice--primary" href="#/lessons">
                     <span class="choice__icon">${icon('book')}</span>
-                    <span class="choice__text"><strong>Learn lessons</strong><span>${LESSONS.length} short lessons: notes, rhythm, then real songs.${
-                        earned ? ` You have ${earned} of ${LESSONS.length * 3} stars.` : ''
+                    <span class="choice__text"><strong>${t('menu.learn')}</strong><span>${t('menu.learnSub', { count: LESSONS.length })}${
+                        earned ? ` ${t('menu.stars', { earned, total: LESSONS.length * 3 })}` : ''
                     }</span></span>
                     ${icon('next', 'choice__arrow')}
                 </a>
             </nav>
-            <button class="btn btn--ghost" data-devices>${icon('plug')}Connect a MIDI keyboard or phone</button>
+            <button class="btn btn--ghost" data-devices>${icon('plug')}${t('menu.connect')}</button>
         </main>`);
     view.querySelector('[data-devices]').addEventListener('click', openDevices);
     ui.append(view);

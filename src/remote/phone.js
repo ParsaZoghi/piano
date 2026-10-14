@@ -1,3 +1,5 @@
+import { t } from '../core/i18n.js';
+import { pitchClassName } from '../core/notes.js';
 import { el, icon } from '../ui/dom.js';
 
 // The phone keyboard: a touch piano that sends note messages to the game
@@ -12,7 +14,7 @@ const BLACK = [
     [13, 8],
     [15, 9],
 ]; // [semitone, index of the white key it follows + 1]
-const NAMES = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E'];
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E'];
 
 export function mountPhone(root, rawRoom) {
     const room = rawRoom.toUpperCase();
@@ -21,37 +23,39 @@ export function mountPhone(root, rawRoom) {
     const view = el(`
         <div class="phone">
             <header class="phone__bar">
-                <strong class="phone__brand">${icon('music')}Keystage</strong>
-                <span class="status" role="status"><span class="dot" data-dot></span><span data-status>Connecting…</span></span>
-                <div class="stepper" role="group" aria-label="Octave">
-                    <button class="icon-btn" data-octave="-1" aria-label="Octave down">${icon('minus')}</button>
-                    <span class="stepper__value" data-octave-label>C4</span>
-                    <button class="icon-btn" data-octave="1" aria-label="Octave up">${icon('plus')}</button>
+                <strong class="phone__brand" lang="en">${icon('music')}Keystage</strong>
+                <span class="status" role="status"><span class="dot" data-dot></span><span data-status>${t('phone.connecting')}</span></span>
+                <div class="stepper" role="group" aria-label="${t('phone.octave')}" dir="ltr">
+                    <button class="icon-btn" data-octave="-1" aria-label="${t('phone.octaveDown')}">${icon('minus')}</button>
+                    <span class="stepper__value" data-octave-label></span>
+                    <button class="icon-btn" data-octave="1" aria-label="${t('phone.octaveUp')}">${icon('plus')}</button>
                 </div>
             </header>
-            <div class="phone__keys" data-keys>
-                ${WHITE.map((semi, i) => `<button class="pkey" data-semi="${semi}" aria-label="${NAMES[i]}"><span>${NAMES[i]}</span></button>`).join('')}
-                ${BLACK.map(([semi, slot]) => `<button class="pkey pkey--black" data-semi="${semi}" style="left:${slot * 10}%" aria-label="Sharp"></button>`).join('')}
+            <div class="phone__keys" data-keys dir="ltr">
+                ${WHITE.map((semi, i) => `<button class="pkey" data-semi="${semi}" aria-label="${pitchClassName(LETTERS[i])}"><span>${pitchClassName(LETTERS[i])}</span></button>`).join('')}
+                ${BLACK.map(([semi, slot]) => `<button class="pkey pkey--black" data-semi="${semi}" style="left:${slot * 10}%" aria-label="♯"></button>`).join('')}
             </div>
-            <p class="phone__tip">Turn your phone sideways for bigger keys. Sound plays on the computer.</p>
+            <p class="phone__tip">${t('phone.tip')}</p>
         </div>`);
     root.append(view);
 
     const statusText = view.querySelector('[data-status]');
     const dot = view.querySelector('[data-dot]');
-    const setStatus = (text, on) => {
-        statusText.textContent = text;
+    const setStatus = (key, on) => {
+        statusText.textContent = t(`phone.${key}`);
         dot.classList.toggle('dot--on', on);
     };
 
     if (!/^[A-Z0-9]{4,8}$/.test(room)) {
-        setStatus('This link is not valid. Scan the code again.', false);
+        setStatus('invalid', false);
         return;
     }
 
     let socket = null;
     let octave = 4;
     const active = new Map(); // pointerId -> { midi, key }
+    const octaveLabel = view.querySelector('[data-octave-label]');
+    octaveLabel.textContent = `${pitchClassName('C')}${octave}`;
 
     function send(type, midi) {
         if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: type, n: midi, v: 0.8 }));
@@ -60,17 +64,17 @@ export function mountPhone(root, rawRoom) {
     function connect() {
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
         socket = new WebSocket(`${proto}://${location.host}/__remote?room=${room}&role=controller`);
-        socket.onopen = () => setStatus('Connected. Open the game on your computer.', false);
+        socket.onopen = () => setStatus('connected', false);
         socket.onmessage = (e) => {
             try {
                 const msg = JSON.parse(e.data);
-                if (msg.t === 'host') setStatus(msg.on ? 'Connected. Play!' : 'Waiting for the game on your computer…', msg.on);
+                if (msg.t === 'host') setStatus(msg.on ? 'play' : 'waitingHost', msg.on);
             } catch {
                 // Ignore anything that is not a relay message.
             }
         };
         socket.onclose = () => {
-            setStatus('Reconnecting…', false);
+            setStatus('reconnecting', false);
             releaseAll();
             setTimeout(connect, 1500);
         };
@@ -118,7 +122,7 @@ export function mountPhone(root, rawRoom) {
         if (!button) return;
         releaseAll();
         octave = Math.max(1, Math.min(6, octave + Number(button.dataset.octave)));
-        view.querySelector('[data-octave-label]').textContent = `C${octave}`;
+        octaveLabel.textContent = `${pitchClassName('C')}${octave}`;
     });
 
     document.addEventListener('visibilitychange', () => document.hidden && releaseAll());

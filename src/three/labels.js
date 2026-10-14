@@ -8,6 +8,8 @@ const STYLES = {
     badgeDark: { color: '#0f172a', fill: '#c7d2fe' }, // typing key on black keys
     note: { color: '#0f172a' }, // on falling notes
 };
+// Longer names (solfège "Sol♯") get a smaller font so they still fit.
+const FONT_SIZE = [70, 70, 54, 44, 36, 30];
 
 export function labelTexture(text, style) {
     const key = `${style}|${text}`;
@@ -25,10 +27,10 @@ export function labelTexture(text, style) {
         g.fill();
     }
     g.fillStyle = color;
-    g.font = `700 ${text.length > 1 ? 54 : 70}px Poppins, "Segoe UI", system-ui, sans-serif`;
+    g.font = `700 ${FONT_SIZE[Math.min(text.length, 5)]}px Poppins, "Segoe UI", system-ui, sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(text, size / 2, size / 2 + 4);
+    g.fillText(text, size / 2, size / 2 + 4, size - 12);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;

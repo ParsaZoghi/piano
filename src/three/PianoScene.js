@@ -3,8 +3,8 @@ import { input } from '../core/input.js';
 import { PIANO_MAX, PIANO_MIN } from '../core/notes.js';
 import { Keyboard3D } from './Keyboard3D.js';
 import { HIGHWAY_LENGTH, NoteHighway } from './NoteHighway.js';
+import { palette, setPalette } from './palette.js';
 
-const BACKGROUND = 0x0b0b1c;
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 // Camera presets. `depth` is the stretch of floor (far z, near z) that must
@@ -14,9 +14,11 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const VIEWS = {
     menu: { pitch: 20, depth: [0, 6.6], top: 0.6, bottom: 0.08, zoom: 0.42 },
     free: { pitch: 52, depth: [-0.4, 6.6], top: 0.16, bottom: 0.14 },
-    find: { pitch: 46, depth: [-0.4, 6.6], top: 0.44, bottom: 0.16, minDistance: 16, portrait: { top: 0.42, bottom: 0.2 } },
-    lesson: { pitch: 36, depth: [-HIGHWAY_LENGTH * 0.6, 6.6], top: 0.12, bottom: 0.15, minDistance: 20, portrait: { top: 0.34, bottom: 0.25 } },
+    find: { pitch: 46, depth: [-0.4, 6.6], top: 0.5, bottom: 0.16, minDistance: 16, portrait: { top: 0.44, bottom: 0.2 } },
+    lesson: { pitch: 36, depth: [-HIGHWAY_LENGTH * 0.6, 6.6], top: 0.12, bottom: 0.15, minDistance: 20, portrait: { top: 0.4, bottom: 0.25 } },
 };
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 2.6;
 const corner = new THREE.Vector3();
 
 export class PianoScene {
@@ -25,7 +27,9 @@ export class PianoScene {
         this.frameListeners = new Set();
         this.view = 'menu';
         this.time = 0;
-        this.pointers = new Map(); // pointerId -> midi
+        this.keyPointers = new Map(); // pointerId -> midi (playing keys)
+        this.camPointers = new Map(); // pointerId -> { x, y } (moving the camera)
+        this.user = { zoom: 1, panX: 0, panY: 0 }; // learner's own camera tweaks
 
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -35,25 +39,30 @@ export class PianoScene {
         this.renderer.toneMappingExposure = 1.05;
 
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(BACKGROUND);
-        this.scene.fog = new THREE.Fog(BACKGROUND, 40, 120);
+        this.scene.background = new THREE.Color();
+        this.scene.fog = new THREE.Fog(0, 40, 120);
 
         this.camera = new THREE.PerspectiveCamera(34, 1, 0.5, 400);
         this.cameraTarget = new THREE.Vector3();
         this.cameraHome = new THREE.Vector3();
+        this.camRight = new THREE.Vector3();
+        this.camUp = new THREE.Vector3();
+        this.homeDistance = 20;
 
-        this.scene.add(new THREE.HemisphereLight(0xc7d2fe, 0x12122a, 1.1));
+        this.hemisphere = new THREE.HemisphereLight();
+        this.scene.add(this.hemisphere);
         this.sun = new THREE.DirectionalLight(0xffffff, 2.4);
         this.sun.position.set(-8, 22, 14);
         this.sun.castShadow = true;
         this.sun.shadow.mapSize.set(2048, 2048);
         this.sun.shadow.bias = -0.0004;
         this.scene.add(this.sun, this.sun.target);
-        const rim = new THREE.PointLight(0x6366f1, 120, 60);
-        rim.position.set(0, 6, -10);
-        this.scene.add(rim);
+        this.rim = new THREE.PointLight(0x6366f1, 120, 60);
+        this.rim.position.set(0, 6, -10);
+        this.scene.add(this.rim);
 
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x0d0d20, roughness: 0.9 }));
+        this.floorMaterial = new THREE.MeshStandardMaterial({ roughness: 0.9 });
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2), this.floorMaterial);
         floor.position.y = -0.52;
         floor.receiveShadow = true;
         this.scene.add(floor);
@@ -61,6 +70,7 @@ export class PianoScene {
         this.keyboard = new Keyboard3D();
         this.highway = new NoteHighway(this.keyboard);
         this.scene.add(this.keyboard.group, this.highway.group);
+        this.applyPalette();
 
         this.raycaster = new THREE.Raycaster();
         this.bindPointer();
@@ -78,14 +88,37 @@ export class PianoScene {
         });
     }
 
+    setTheme(theme) {
+        setPalette(theme);
+        this.applyPalette();
+    }
+
+    applyPalette() {
+        this.scene.background.set(palette.background);
+        this.scene.fog.color.set(palette.background);
+        this.floorMaterial.color.set(palette.floor);
+        this.hemisphere.color.set(palette.sky);
+        this.hemisphere.groundColor.set(palette.ground);
+        this.hemisphere.intensity = palette.hemisphere;
+        this.rim.intensity = palette.rim;
+        this.keyboard.applyPalette();
+        this.highway.applyPalette();
+    }
+
     /** Show the keys lo..hi with the chosen camera preset. */
-    configure({ lo = PIANO_MIN, hi = PIANO_MAX, view = 'free', highway = false }) {
+    configure({ lo = PIANO_MIN, hi = PIANO_MAX, view = 'free', highway = false, unit = 1 }) {
         input.releaseAll();
-        this.keyboard.build(lo, hi);
+        this.keyboard.build(lo, hi, unit);
         this.highway.group.visible = highway;
         if (highway) this.highway.layout();
         this.view = view;
+        this.user = { zoom: 1, panX: 0, panY: 0 };
         this.fit();
+    }
+
+    /** The learner may move the camera everywhere except the menu backdrop. */
+    get interactive() {
+        return this.view !== 'menu';
     }
 
     onFrame(fn) {
@@ -136,8 +169,11 @@ export class PianoScene {
             distance *= 1.04;
         }
         this.cameraHome.copy(this.camera.position);
+        this.homeDistance = distance;
+        this.camRight.setFromMatrixColumn(this.camera.matrixWorld, 0);
+        this.camUp.setFromMatrixColumn(this.camera.matrixWorld, 1);
 
-        const far = distance + HIGHWAY_LENGTH + 30;
+        const far = distance * ZOOM_MAX + HIGHWAY_LENGTH + 30;
         this.scene.fog.near = far * 0.75;
         this.scene.fog.far = far * 1.6;
 
@@ -149,6 +185,52 @@ export class PianoScene {
         cam.bottom = -12;
         cam.far = 80;
         cam.updateProjectionMatrix();
+
+        this.applyCamera();
+    }
+
+    /** Home position, then the learner's pan (in the screen plane) and zoom. */
+    applyCamera() {
+        const { zoom, panX, panY } = this.user;
+        const target = this.cameraTarget.clone().addScaledVector(this.camRight, panX).addScaledVector(this.camUp, panY);
+        this.camera.position.copy(this.cameraHome).sub(this.cameraTarget).multiplyScalar(zoom).add(target);
+        this.camera.lookAt(target);
+    }
+
+    // --- camera controls (wheel, drag, pinch, keys, buttons) ----------------
+
+    zoomBy(factor) {
+        if (!this.interactive) return;
+        this.user.zoom = THREE.MathUtils.clamp(this.user.zoom * factor, ZOOM_MIN, ZOOM_MAX);
+        this.applyCamera();
+    }
+
+    /** Move the view by a screen distance in pixels (content follows the pointer). */
+    panByPixels(dx, dy) {
+        if (!this.interactive) return;
+        const tanHalf = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+        const perPixel = (2 * this.homeDistance * this.user.zoom * tanHalf) / (this.canvas.clientHeight || 1);
+        this.panBy(-dx * perPixel, dy * perPixel);
+    }
+
+    /** Step the camera: dirX/dirY are -1, 0 or 1 (right / up are positive). */
+    step(dirX, dirY) {
+        const tanHalf = Math.tan(THREE.MathUtils.degToRad(this.camera.fov) / 2);
+        const stepSize = 0.25 * this.homeDistance * this.user.zoom * tanHalf;
+        this.panBy(dirX * stepSize, dirY * stepSize);
+    }
+
+    panBy(x, y) {
+        if (!this.interactive) return;
+        const limitX = this.keyboard.width / 2 + 8;
+        this.user.panX = THREE.MathUtils.clamp(this.user.panX + x, -limitX, limitX);
+        this.user.panY = THREE.MathUtils.clamp(this.user.panY + y, -16, 16);
+        this.applyCamera();
+    }
+
+    resetCamera() {
+        this.user = { zoom: 1, panX: 0, panY: 0 };
+        this.applyCamera();
     }
 
     loop(now) {
@@ -164,7 +246,9 @@ export class PianoScene {
         this.renderer.render(this.scene, this.camera);
     }
 
-    // --- mouse / touch on the 3D keys --------------------------------------
+    // --- mouse / touch ----------------------------------------------------
+    // On a key: play it (drag across keys for a glissando). Anywhere else:
+    // one pointer moves the camera, two pointers pinch to zoom.
 
     keyAt(event) {
         const rect = this.canvas.getBoundingClientRect();
@@ -174,32 +258,73 @@ export class PianoScene {
         return hit ? hit.object.userData.midi : null;
     }
 
+    pinchState() {
+        const [a, b] = [...this.camPointers.values()];
+        return { distance: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+
     bindPointer() {
+        const canvas = this.canvas;
         const release = (e) => {
-            const midi = this.pointers.get(e.pointerId);
+            const midi = this.keyPointers.get(e.pointerId);
             if (midi != null) input.noteOff(midi, `pointer${e.pointerId}`);
-            this.pointers.delete(e.pointerId);
+            this.keyPointers.delete(e.pointerId);
+            this.camPointers.delete(e.pointerId);
+            if (!this.camPointers.size) canvas.classList.remove('is-dragging');
         };
-        this.canvas.addEventListener('pointerdown', (e) => {
-            if (this.view === 'menu' || e.button > 0) return;
-            const midi = this.keyAt(e);
-            if (midi == null) return;
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!this.interactive || e.button > 0) return;
             e.preventDefault();
-            this.canvas.setPointerCapture(e.pointerId);
-            this.pointers.set(e.pointerId, midi);
-            input.noteOn(midi, 0.8, `pointer${e.pointerId}`);
+            canvas.setPointerCapture(e.pointerId);
+            const midi = this.camPointers.size ? null : this.keyAt(e);
+            if (midi != null) {
+                this.keyPointers.set(e.pointerId, midi);
+                input.noteOn(midi, 0.8, `pointer${e.pointerId}`);
+            } else {
+                this.camPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                canvas.classList.add('is-dragging');
+            }
         });
-        // Dragging across keys plays a glissando.
-        this.canvas.addEventListener('pointermove', (e) => {
-            if (!this.pointers.has(e.pointerId)) return;
-            const midi = this.keyAt(e);
-            const current = this.pointers.get(e.pointerId);
-            if (midi == null || midi === current) return;
-            input.noteOff(current, `pointer${e.pointerId}`);
-            this.pointers.set(e.pointerId, midi);
-            input.noteOn(midi, 0.8, `pointer${e.pointerId}`);
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (this.keyPointers.has(e.pointerId)) {
+                const midi = this.keyAt(e);
+                const current = this.keyPointers.get(e.pointerId);
+                if (midi == null || midi === current) return;
+                input.noteOff(current, `pointer${e.pointerId}`);
+                this.keyPointers.set(e.pointerId, midi);
+                input.noteOn(midi, 0.8, `pointer${e.pointerId}`);
+                return;
+            }
+            const point = this.camPointers.get(e.pointerId);
+            if (!point) return;
+            if (this.camPointers.size === 1) {
+                this.panByPixels(e.clientX - point.x, e.clientY - point.y);
+                point.x = e.clientX;
+                point.y = e.clientY;
+            } else if (this.camPointers.size === 2) {
+                const before = this.pinchState();
+                point.x = e.clientX;
+                point.y = e.clientY;
+                const after = this.pinchState();
+                if (after.distance > 0) this.zoomBy(before.distance / after.distance);
+                this.panByPixels(after.x - before.x, after.y - before.y);
+            }
         });
-        this.canvas.addEventListener('pointerup', release);
-        this.canvas.addEventListener('pointercancel', release);
+
+        canvas.addEventListener('pointerup', release);
+        canvas.addEventListener('pointercancel', release);
+
+        canvas.addEventListener(
+            'wheel',
+            (e) => {
+                if (!this.interactive) return;
+                e.preventDefault();
+                const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+                this.zoomBy(Math.exp(delta * 0.0012));
+            },
+            { passive: false },
+        );
     }
 }

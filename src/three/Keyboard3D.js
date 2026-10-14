@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { isBlack, octaveOf, pitchName } from '../core/notes.js';
 import { makeLabel } from './labels.js';
+import { palette } from './palette.js';
 
-// Units: one white key is 1 wide. Keys run along +Z toward the player, with
-// their back edge at z = 0 so they can hinge there when pressed.
+// Units: one white key is `unit` wide (1 normally). Keys run along +Z toward
+// the player, with their back edge at z = 0 so they can hinge there.
 export const WHITE_LENGTH = 6;
 export const WHITE_TOP = 0.9;
 const BLACK_LENGTH = 3.8;
@@ -28,33 +29,43 @@ export class Keyboard3D {
         this.group = new THREE.Group();
         this.keys = new Map(); // midi -> key record
         this.meshes = []; // for raycasting
+        this.caseParts = [];
         this.width = 0;
+        this.unit = 1;
         this.hintMidi = null;
-        this.caseMaterial = new THREE.MeshStandardMaterial({ color: 0x15152a, roughness: 0.45, metalness: 0.3 });
-        this.feltMaterial = new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 1 });
+        this.caseMaterial = new THREE.MeshStandardMaterial({ roughness: 0.5, metalness: 0.05 });
+        this.feltMaterial = new THREE.MeshStandardMaterial({ roughness: 1 });
+        this.applyPalette();
+    }
+
+    applyPalette() {
+        this.caseMaterial.color.set(palette.frame);
+        this.feltMaterial.color.set(palette.felt);
     }
 
     /** Build keys for the inclusive MIDI range, widened to end on white keys. */
-    build(lo, hi) {
+    build(lo, hi, unit = 1) {
         this.clear();
         while (isBlack(lo)) lo--;
         while (isBlack(hi)) hi++;
         this.lo = lo;
         this.hi = hi;
+        this.unit = unit;
 
         let whites = 0;
         for (let m = lo; m <= hi; m++) if (!isBlack(m)) whites++;
-        this.width = whites;
+        this.width = whites * unit;
         const origin = -(whites - 1) / 2;
 
         let whiteIndex = 0;
         for (let midi = lo; midi <= hi; midi++) {
             const black = isBlack(midi);
-            const x = black ? origin + whiteIndex - 0.5 + BLACK_NUDGE[midi % 12] : origin + whiteIndex++;
+            const x = (black ? origin + whiteIndex - 0.5 + BLACK_NUDGE[midi % 12] : origin + whiteIndex++) * unit;
             const material = new THREE.MeshStandardMaterial(
                 black ? { color: 0x16161f, roughness: 0.35, metalness: 0.1 } : { color: 0xf5f2ea, roughness: 0.3, metalness: 0 },
             );
             const mesh = new THREE.Mesh(black ? blackGeometry : whiteGeometry, material);
+            mesh.scale.x = unit;
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             mesh.userData.midi = midi;
@@ -64,7 +75,21 @@ export class Keyboard3D {
             pivot.add(mesh);
             this.group.add(pivot);
             this.meshes.push(mesh);
-            this.keys.set(midi, { midi, black, x, pivot, material, base: material.color.clone(), tint: new THREE.Color(), pressed: false, angle: 0, flash: null, flashLeft: 0, glow: 0, labels: [] });
+            this.keys.set(midi, {
+                midi,
+                black,
+                x,
+                pivot,
+                material,
+                base: material.color.clone(),
+                tint: new THREE.Color(),
+                pressed: false,
+                angle: 0,
+                flash: null,
+                flashLeft: 0,
+                glow: 0,
+                labels: [],
+            });
         }
         this.buildCase();
     }
@@ -79,7 +104,6 @@ export class Keyboard3D {
             this.group.add(mesh);
             this.caseParts.push(mesh);
         };
-        this.caseParts = [];
         add(new THREE.BoxGeometry(w + 1.3, 0.5, WHITE_LENGTH + 0.9), this.caseMaterial, 0, -0.27, WHITE_LENGTH / 2 - 0.15);
         add(new THREE.BoxGeometry(w + 0.1, 0.1, 0.22), this.feltMaterial, 0, WHITE_TOP + 0.03, -0.1);
         for (const side of [-1, 1]) {
@@ -89,7 +113,8 @@ export class Keyboard3D {
 
     clear() {
         for (const key of this.keys.values()) key.material.dispose();
-        for (const part of this.caseParts || []) part.geometry.dispose();
+        for (const part of this.caseParts) part.geometry.dispose();
+        this.caseParts = [];
         this.group.clear();
         this.keys.clear();
         this.meshes = [];
@@ -105,27 +130,28 @@ export class Keyboard3D {
     }
 
     /**
-     * names: show note letters on white keys.
+     * names: show note names on white keys.
      * typingMap: Map(midi -> char) of the typing keys to show, or null.
      */
     setLabels({ names, typingMap }) {
+        const grow = Math.min(this.unit, 1.3);
         for (const key of this.keys.values()) {
             for (const label of key.labels) key.pivot.remove(label);
             key.labels = [];
             const add = (text, style, size, y, z) => {
-                const label = makeLabel(text, style, size);
+                const label = makeLabel(text, style, size * grow);
                 label.position.set(0, y, z);
                 key.pivot.add(label);
                 key.labels.push(label);
             };
             if (names && !key.black) {
                 const isC = key.midi % 12 === 0;
-                add(isC ? pitchName(key.midi) + octaveOf(key.midi) : pitchName(key.midi), 'name', isC ? 0.78 : 0.7, WHITE_TOP + 0.006, 5.35);
+                add(isC ? pitchName(key.midi) + octaveOf(key.midi) : pitchName(key.midi), 'name', isC ? 0.82 : 0.74, WHITE_TOP + 0.006, 5.35);
             }
             const char = typingMap?.get(key.midi);
             if (char) {
                 if (key.black) add(char, 'badgeDark', 0.52, BLACK_TOP + 0.006, 3.3);
-                else add(char, 'badge', 0.7, WHITE_TOP + 0.006, 4.5);
+                else add(char, 'badge', 0.7, WHITE_TOP + 0.006, 4.4);
             }
         }
     }

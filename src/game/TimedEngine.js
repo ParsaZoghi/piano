@@ -6,7 +6,6 @@ import { parseSong } from './lessons.js';
 // Timing windows in real seconds either side of the beat.
 const WINDOWS = { perfect: 0.09, good: 0.17, ok: 0.28 };
 const POINTS = { perfect: 100, good: 70, ok: 40 };
-const COUNT_IN_BEATS = 4;
 const BEAT_LABELS = { 0.5: '½', 1: '1', 1.5: '1½', 2: '2', 3: '3', 4: '4' };
 
 /** Runs "rhythm" and "play" lessons: moves the highway and judges each press. */
@@ -17,6 +16,7 @@ export class TimedEngine {
         this.callbacks = callbacks;
         this.anyKey = lesson.mode === 'rhythm';
         this.spb = 60 / lesson.bpm;
+        this.meter = lesson.meter || 4; // beats per bar; one bar counts you in
 
         const { notes, totalBeats } = parseSong(lesson);
         this.notes = notes.map((n) => ({
@@ -37,8 +37,9 @@ export class TimedEngine {
         this.running = false;
         this.finished = false;
         this.waiting = false;
-        this.t = -COUNT_IN_BEATS * this.spb;
-        this.nextBeat = -COUNT_IN_BEATS;
+        this.paused = false;
+        this.t = -this.meter * this.spb;
+        this.nextBeat = -this.meter;
         this.cursor = 0;
         this.score = 0;
         this.combo = 0;
@@ -54,12 +55,27 @@ export class TimedEngine {
         for (const note of this.notes) note.state = 'pending';
         this.scene.keyboard.releaseAll();
         this.scene.keyboard.setHint(null);
-        this.scene.highway.setNotes(this.notes, { secondsPerBeat: this.spb });
+        this.scene.highway.setNotes(this.notes, { secondsPerBeat: this.spb, beatsPerBar: this.meter });
         this.scene.highway.update(this.t);
     }
 
     start() {
         this.running = true;
+    }
+
+    /** Freeze the song (the scene keeps rendering). Returns the new state. */
+    togglePause(force = !this.paused) {
+        if (!this.running && !this.paused) return false;
+        this.paused = force;
+        this.running = !force;
+        if (force) {
+            for (const h of this.demoHeld) {
+                synth.noteOff(h.midi);
+                this.scene.keyboard.press(h.midi, false);
+            }
+            this.demoHeld = [];
+        }
+        return this.paused;
     }
 
     get progress() {
@@ -87,8 +103,8 @@ export class TimedEngine {
 
         while (this.nextBeat * this.spb <= t) {
             const counting = this.nextBeat < 0;
-            if (counting || settings.metronome) synth.click(this.nextBeat % 4 === 0);
-            if (this.nextBeat <= 0) this.callbacks.onCountIn?.(counting ? this.nextBeat + COUNT_IN_BEATS + 1 : 0);
+            if (counting || settings.metronome) synth.click(((this.nextBeat % this.meter) + this.meter) % this.meter === 0);
+            if (this.nextBeat <= 0) this.callbacks.onCountIn?.(counting ? this.nextBeat + this.meter + 1 : 0);
             this.nextBeat++;
         }
 
@@ -125,7 +141,7 @@ export class TimedEngine {
     }
 
     onNoteOn(midi) {
-        if (!this.running || this.demo) return;
+        if (!this.running || this.demo || this.paused) return;
         const speed = settings.speed;
 
         if (this.waiting) {
@@ -197,6 +213,7 @@ export class TimedEngine {
 
     finish() {
         this.running = false;
+        this.paused = false;
         this.finished = true;
         this.scene.keyboard.setHint(null);
         for (const h of this.demoHeld) {

@@ -1,214 +1,146 @@
-import { parseNote } from '../core/notes.js';
+import { has, t, tList } from '../core/i18n.js';
+import { isBlack, parseNote } from '../core/notes.js';
 
 // The curriculum: notes first, rhythm second, then both together in songs.
+// Titles, goals and tips live in src/i18n (key: lessons.<id>).
 // Three lesson modes:
 //   find   - untimed: press the key for the note shown (hints fade per round)
 //   rhythm - timed: tap any key in time; only the rhythm is scored
 //   play   - timed: right key at the right time
 //
 // Songs are written as "NOTE:beats" tokens ("R" is a rest, "X" a rhythm tap,
-// "|" is ignored and only marks bars for readability).
+// "|" is ignored and only marks bars for readability). `meter` is beats per
+// bar (4 unless given). Songs are public-domain melodies.
 
-export const UNITS = [
-    { id: 'notes', title: 'Meet the notes', blurb: 'Where each note lives on the keyboard and on the staff.' },
-    { id: 'rhythm', title: 'Feel the rhythm', blurb: 'Steady beats, long notes, short notes and silence.' },
-    { id: 'songs', title: 'Play real songs', blurb: 'Put notes and rhythm together.' },
-];
+export const UNITS = ['notes', 'rhythm', 'songs'];
 
 const WHITE_5 = ['C4', 'D4', 'E4', 'F4', 'G4'];
 const WHITE_8 = [...WHITE_5, 'A4', 'B4', 'C5'];
 
+const song = (id, bpm, notes, extra = {}) => ({ id, unit: 'songs', mode: 'play', bpm, song: notes, ...extra });
+
 export const LESSONS = [
-    {
-        id: 'n1',
-        unit: 'notes',
-        mode: 'find',
-        title: 'C, D and E',
-        goal: 'Find your first three notes.',
-        range: ['C4', 'E4'],
-        pool: ['C4', 'D4', 'E4'],
-        rounds: [['key', 6], ['name', 6], ['staff', 6]],
-        tips: ['C is the white key just left of the two black keys.', 'On your keyboard: A plays C, S plays D, D plays E.', 'The glowing key helps at first, then the hint fades.'],
-    },
-    {
-        id: 'n2',
-        unit: 'notes',
-        mode: 'find',
-        title: 'F and G',
-        goal: 'Add two more notes to make a five-note hand position.',
-        range: ['C4', 'G4'],
-        pool: WHITE_5,
-        focus: ['F4', 'G4'],
-        rounds: [['key', 6], ['name', 8], ['staff', 8]],
-        tips: ['F is the white key just left of the three black keys.', 'F and G are on the F and G typing keys.', 'Notes climb the staff one step at a time: line, space, line, space.'],
-    },
-    {
-        id: 'n3',
-        unit: 'notes',
-        mode: 'find',
-        title: 'Five-note review',
-        goal: 'C D E F G with no glowing keys.',
-        range: ['C4', 'G4'],
-        pool: WHITE_5,
-        rounds: [['name', 8], ['staff', 10]],
-        tips: ['Rest five fingers on A S D F G and try not to look down.', 'Miss twice and the key lights up, so you are never stuck.'],
-    },
-    {
-        id: 'n4',
-        unit: 'notes',
-        mode: 'find',
-        title: 'A, B and high C',
-        goal: 'Finish the whole octave.',
-        range: ['C4', 'C5'],
-        pool: WHITE_8,
-        focus: ['A4', 'B4', 'C5'],
-        rounds: [['key', 6], ['name', 8], ['staff', 10]],
-        tips: ['After G the musical alphabet starts again: A, B, then C.', 'Every C looks the same: left of a pair of black keys.'],
-    },
-    {
-        id: 'n5',
-        unit: 'notes',
-        mode: 'find',
-        title: 'The black keys',
-        goal: 'Meet the sharps.',
-        range: ['C4', 'C5'],
-        pool: ['C#4', 'D#4', 'F#4', 'G#4', 'A#4'],
-        rounds: [['key', 5], ['name', 10], ['staff', 6]],
-        tips: ['A sharp (♯) is the black key just to the right of a white key.', 'Black keys sit on the row above: W E T Y U.', 'They come in a group of two, then a group of three.'],
-    },
-    {
-        id: 'n6',
-        unit: 'notes',
-        mode: 'find',
-        title: 'Staff reading challenge',
-        goal: 'Read ten white-key notes straight from the staff.',
-        range: ['C4', 'E5'],
-        pool: [...WHITE_8, 'D5', 'E5'],
-        rounds: [['name', 8], ['staff', 14]],
-        tips: ['Lines from the bottom: E G B D F. Spaces: F A C E.', 'Middle C sits on its own short line below the staff.'],
-    },
-    {
-        id: 'r1',
-        unit: 'rhythm',
-        mode: 'rhythm',
-        title: 'The steady beat',
-        goal: 'Quarter notes: one tap per beat.',
-        range: ['C4', 'E4'],
-        lane: 'D4',
-        bpm: 76,
-        values: [1],
-        song: 'X X X X | X X X X | X X X X | X X X X',
-        tips: ['Press any key when a block reaches the green line.', 'Listen to the click and count 1, 2, 3, 4.', 'Four clicks count you in before the notes arrive.'],
-    },
+    { id: 'n1', unit: 'notes', mode: 'find', range: ['C4', 'E4'], pool: ['C4', 'D4', 'E4'], rounds: [['key', 6], ['name', 6], ['staff', 6]] },
+    { id: 'n2', unit: 'notes', mode: 'find', range: ['C4', 'G4'], pool: WHITE_5, focus: ['F4', 'G4'], rounds: [['key', 6], ['name', 8], ['staff', 8]] },
+    { id: 'n3', unit: 'notes', mode: 'find', range: ['C4', 'G4'], pool: WHITE_5, rounds: [['name', 8], ['staff', 10]] },
+    { id: 'n4', unit: 'notes', mode: 'find', range: ['C4', 'C5'], pool: WHITE_8, focus: ['A4', 'B4', 'C5'], rounds: [['key', 6], ['name', 8], ['staff', 10]] },
+    { id: 'n5', unit: 'notes', mode: 'find', range: ['C4', 'C5'], pool: ['C#4', 'D#4', 'F#4', 'G#4', 'A#4'], rounds: [['key', 5], ['name', 10], ['staff', 6]] },
+    { id: 'n6', unit: 'notes', mode: 'find', range: ['C4', 'E5'], pool: [...WHITE_8, 'D5', 'E5'], rounds: [['name', 8], ['staff', 14]] },
+
+    { id: 'r1', unit: 'rhythm', mode: 'rhythm', range: ['C4', 'E4'], lane: 'D4', bpm: 76, song: 'X X X X | X X X X | X X X X | X X X X' },
     {
         id: 'r2',
         unit: 'rhythm',
         mode: 'rhythm',
-        title: 'Long notes',
-        goal: 'Half notes last two beats, whole notes four.',
         range: ['C4', 'E4'],
         lane: 'D4',
         bpm: 80,
-        values: [1, 2, 4],
         song: 'X:2 X:2 | X X X:2 | X:2 X X | X:4 | X:2 X:2 | X X X X | X:2 X:2 | X:4',
-        tips: ['Hold the key down for the whole length of a long block.', 'Keep counting in your head while you hold.'],
     },
     {
         id: 'r3',
         unit: 'rhythm',
         mode: 'rhythm',
-        title: 'Eighth notes',
-        goal: 'Two quick notes fit in one beat.',
         range: ['C4', 'E4'],
         lane: 'D4',
         bpm: 72,
-        values: [0.5, 1, 2],
         song: 'X X X:.5 X:.5 X | X:.5 X:.5 X:.5 X:.5 X X | X X:.5 X:.5 X X:.5 X:.5 | X:.5 X:.5 X X:2 | X:.5 X:.5 X:.5 X:.5 X:.5 X:.5 X | X:2 X:2',
-        tips: ['Count "1 and 2 and 3 and 4 and".', 'Eighth notes land on the numbers and on the "and"s.'],
     },
     {
         id: 'r4',
         unit: 'rhythm',
         mode: 'rhythm',
-        title: 'Rests',
-        goal: 'Silence has a length too.',
         range: ['C4', 'E4'],
         lane: 'D4',
         bpm: 80,
-        values: [1, 2],
         song: 'X R X R | X X R X | R X R X | X:2 R:2 | X R X X | R X X R | X X R X | X:2 R:2',
-        tips: ['A gap in the blocks is a rest: lift your finger and wait.', 'Keep counting through the silence.'],
     },
-    {
-        id: 's1',
-        unit: 'songs',
-        mode: 'play',
-        title: 'Hot Cross Buns',
-        goal: 'Three notes, one real tune.',
-        range: ['C4', 'E4'],
-        bpm: 84,
-        song: 'E4 D4 C4:2 | E4 D4 C4:2 | C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 | E4 D4 C4:2',
-        tips: ['Tap "Listen first" to hear the tune.', 'Turn on Wait mode and the notes will wait for you.'],
-    },
-    {
-        id: 's2',
-        unit: 'songs',
-        mode: 'play',
-        title: 'Mary Had a Little Lamb',
-        goal: 'Stepping between C and G.',
-        range: ['C4', 'G4'],
-        bpm: 92,
-        song: 'E4 D4 C4 D4 | E4 E4 E4:2 | D4 D4 D4:2 | E4 G4 G4:2 | E4 D4 C4 D4 | E4 E4 E4 E4 | D4 D4 E4 D4 | C4:4',
-        tips: ['Too fast? Lower the speed in the toolbar.', 'Watch the letter on each block as it comes toward you.'],
-    },
-    {
-        id: 's3',
-        unit: 'songs',
-        mode: 'play',
-        title: 'Ode to Joy',
-        goal: 'A famous melody with a dotted rhythm.',
-        range: ['C4', 'G4'],
-        bpm: 96,
-        song: 'E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4:1.5 D4:.5 D4:2 | E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | D4:1.5 C4:.5 C4:2',
-        tips: ['The slightly longer block is held for a beat and a half.'],
-    },
-    {
-        id: 's4',
-        unit: 'songs',
-        mode: 'play',
-        title: 'Twinkle, Twinkle',
-        goal: 'Jumping from C up to G, and reaching A.',
-        range: ['C4', 'A4'],
-        bpm: 96,
-        song: 'C4 C4 G4 G4 | A4 A4 G4:2 | F4 F4 E4 E4 | D4 D4 C4:2 | G4 G4 F4 F4 | E4 E4 D4:2 | G4 G4 F4 F4 | E4 E4 D4:2 | C4 C4 G4 G4 | A4 A4 G4:2 | F4 F4 E4 E4 | D4 D4 C4:2',
-        tips: ['C to G is a jump: A key to G key.', 'A is one step above G, on the H key.'],
-    },
-    {
-        id: 's5',
-        unit: 'songs',
-        mode: 'play',
-        title: 'Jingle Bells',
-        goal: 'Quarter, half, dotted and eighth notes in one song.',
-        range: ['C4', 'G4'],
-        bpm: 100,
-        song: 'E4 E4 E4:2 | E4 E4 E4:2 | E4 G4 C4:1.5 D4:.5 | E4:4 | F4 F4 F4:1.5 F4:.5 | F4 E4 E4 E4:.5 E4:.5 | E4 D4 D4 E4 | D4:2 G4:2',
-        tips: ['Everything you have learned so far is in this one.'],
-    },
-    {
-        id: 's6',
-        unit: 'songs',
-        mode: 'play',
-        title: 'C major scale',
-        goal: 'All eight notes, up and back down.',
-        range: ['C4', 'C5'],
-        bpm: 88,
-        song: 'C4 D4 E4 F4 | G4 A4 B4 C5 | C5 B4 A4 G4 | F4 E4 D4 C4 | C4:.5 D4:.5 E4:.5 F4:.5 G4:.5 A4:.5 B4:.5 C5:.5 | C5:.5 B4:.5 A4:.5 G4:.5 F4:.5 E4:.5 D4:.5 C4:.5 | C4:4',
-        tips: ['The second time is twice as fast: eighth notes.'],
-    },
+
+    song('s1', 84, 'E4 D4 C4:2 | E4 D4 C4:2 | C4:.5 C4:.5 C4:.5 C4:.5 D4:.5 D4:.5 D4:.5 D4:.5 | E4 D4 C4:2'),
+    song('s7', 88, 'G4 E4 G4:.5 G4:.5 E4 | G4:.5 G4:.5 E4:.5 A4:.5 G4:.5 G4:.5 E4 | G4 E4 G4:.5 G4:.5 E4 | G4:.5 G4:.5 E4:.5 A4:.5 G4:.5 G4:.5 E4'),
+    song('s8', 96, 'C4 C4 C4 D4 | E4:2 D4:2 | C4 E4 D4 D4 | C4:4 | C4 C4 C4 D4 | E4:2 D4:2 | C4 E4 D4 D4 | C4:4'),
+    song('s2', 92, 'E4 D4 C4 D4 | E4 E4 E4:2 | D4 D4 D4:2 | E4 G4 G4:2 | E4 D4 C4 D4 | E4 E4 E4 E4 | D4 D4 E4 D4 | C4:4'),
+    song('s9', 96, 'E4:2 E4 D4 | C4:2 C4:2 | D4:2 D4 F4 | E4 D4 C4:2 | G4:2 G4 F4 | E4:2 E4:2 | C4 D4 E4 D4 | C4:4'),
+    song(
+        's10',
+        100,
+        'G4 E4 E4:2 | F4 D4 D4:2 | C4 D4 E4 F4 | G4 G4 G4:2 | G4 E4 E4:2 | F4 D4 D4:2 | C4 E4 G4 G4 | E4:4 | D4 D4 D4 D4 | D4 E4 F4:2 | E4 E4 E4 E4 | E4 F4 G4:2 | G4 E4 E4:2 | F4 D4 D4:2 | C4 E4 G4 G4 | C4:4',
+    ),
+    song('s3', 96, 'E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | E4:1.5 D4:.5 D4:2 | E4 E4 F4 G4 | G4 F4 E4 D4 | C4 C4 D4 E4 | D4:1.5 C4:.5 C4:2'),
+    song('s11', 100, 'C4:2 C4 D4 | E4:2 E4 F4 | G4:2 A4 G4 | E4:4 | G4:2 F4 E4 | D4:4 | F4:2 E4 D4 | C4:4'),
+    song('s12', 92, 'C4 F4 E4 F4 | G4 D4 G4:2 | F4 E4 D4 E4 | F4:4 | C4 F4 E4 F4 | G4 D4 G4:2 | F4 E4 D4 E4 | F4:4'),
+    song(
+        's4',
+        96,
+        'C4 C4 G4 G4 | A4 A4 G4:2 | F4 F4 E4 E4 | D4 D4 C4:2 | G4 G4 F4 F4 | E4 E4 D4:2 | G4 G4 F4 F4 | E4 E4 D4:2 | C4 C4 G4 G4 | A4 A4 G4:2 | F4 F4 E4 E4 | D4 D4 C4:2',
+    ),
+    song('s13', 104, 'G4:1.5 A4:.5 G4 F4 | E4 F4 G4:2 | D4 E4 F4:2 | E4 F4 G4:2 | G4:1.5 A4:.5 G4 F4 | E4 F4 G4:2 | D4:2 G4:2 | E4 C4:3'),
+    song('s14', 76, 'E4:1.5 G4:.5 G4:2 | E4:1.5 D4:.5 C4:2 | D4:1.5 E4:.5 G4:1.5 E4:.5 | D4:4 | E4:1.5 G4:.5 G4:2 | E4:1.5 D4:.5 C4:2 | D4 E4 D4:1.5 C4:.5 | C4:4'),
+    song('s5', 100, 'E4 E4 E4:2 | E4 E4 E4:2 | E4 G4 C4:1.5 D4:.5 | E4:4 | F4 F4 F4:1.5 F4:.5 | F4 E4 E4 E4:.5 E4:.5 | E4 D4 D4 E4 | D4:2 G4:2'),
+    song(
+        's15',
+        108,
+        'R C4 E4 F4 | G4:4 | R C4 E4 F4 | G4:4 | R C4 E4 F4 | G4:2 E4:2 | C4:2 E4:2 | D4:4 | R E4 E4 D4 | C4:3 C4 | E4:2 G4:2 | G4 G4 F4:2 | R:2 E4 F4 | G4:2 E4:2 | C4:2 D4:2 | C4:4',
+    ),
+    song(
+        's6',
+        88,
+        'C4 D4 E4 F4 | G4 A4 B4 C5 | C5 B4 A4 G4 | F4 E4 D4 C4 | C4:.5 D4:.5 E4:.5 F4:.5 G4:.5 A4:.5 B4:.5 C5:.5 | C5:.5 B4:.5 A4:.5 G4:.5 F4:.5 E4:.5 D4:.5 C4:.5 | C4:4',
+    ),
+    song('s16', 96, 'G4 E4 G4:2 | G4 E4 G4:2 | A4 G4 F4 E4 | D4 E4 F4:2 | E4:.5 F4:.5 G4 C4:.5 C4:.5 C4:.5 C4:.5 | C4:.5 D4:.5 E4:.5 F4:.5 G4:2 | G4 D4 D4 F4 | E4 D4 C4:2'),
+    song(
+        's17',
+        100,
+        'R:3 C4:.5 D4:.5 | E4 G4 G4:1.5 A4:.5 | G4 E4 C4:1.5 D4:.5 | E4 E4 D4 C4 | D4:3 C4:.5 D4:.5 | E4 G4 G4:1.5 A4:.5 | G4 E4 C4:1.5 D4:.5 | E4 E4 D4 D4 | C4:4',
+    ),
+    song('s18', 104, 'G4 G4 G4 D4 | E4 E4 D4:2 | B4 B4 A4 A4 | G4:3 D4 | G4 G4 G4 D4 | E4 E4 D4:2 | B4 B4 A4 A4 | G4:4'),
+    song(
+        's19',
+        104,
+        'G4 G4 G4 A4 | G4 G4 D4:2 | E4 D4 E4 F#4 | G4:2 G4:2 | G4 G4 G4 A4 | G4 G4 D4:2 | E4 D4 E4 F#4 | G4:2 G4:2 | D5 C5 B4 A4 | B4 A4 G4:2 | E4 D4 E4 F#4 | G4:2 G4:2',
+    ),
+    song('s20', 108, 'G4 G4 A4 B4 | G4 B4 A4 D4 | G4 G4 A4 B4 | G4:2 F#4:2 | G4 G4 A4 B4 | C5 B4 A4 G4 | F#4 D4 E4 F#4 | G4:2 G4:2'),
+    song(
+        's21',
+        104,
+        'F4 G4 A4 F4 | F4 G4 A4 F4 | A4 A#4 C5:2 | A4 A#4 C5:2 | C5:.5 D5:.5 C5:.5 A#4:.5 A4 F4 | C5:.5 D5:.5 C5:.5 A#4:.5 A4 F4 | F4 C4 F4:2 | F4 C4 F4:2',
+    ),
+    song('s22', 100, 'F4:1.5 G4:.5 A4 A4 | G4:.5 F4:.5 G4:.5 A4:.5 F4 C4 | F4:1.5 G4:.5 A4 A4 | G4:.5 F4:.5 G4:.5 A4:.5 F4:2'),
+    song(
+        's23',
+        112,
+        'C4:2 D4:.5 F4:.5 E4:.5 D4:.5 | G4 G4 G4:.5 A4:.5 E4:.5 F4:.5 | D4 D4 D4:.5 F4:.5 E4:.5 D4:.5 | C4:.5 C5:.5 B4:.5 A4:.5 G4:.5 F4:.5 E4:.5 D4:.5 | C4:2 D4:.5 F4:.5 E4:.5 D4:.5 | G4 G4 G4:.5 A4:.5 E4:.5 F4:.5 | D4 D4 D4:.5 F4:.5 E4:.5 D4:.5 | C4:.5 G4:.5 D4:.5 E4:.5 C4:2',
+    ),
+    song('s24', 96, 'R:2 C4:.5 C4:.5 | D4 C4 F4 | E4:2 C4:.5 C4:.5 | D4 C4 G4 | F4:2 C4:.5 C4:.5 | C5 A4 F4 | E4 D4 A#4:.5 A#4:.5 | A4 F4 G4 | F4:3', { meter: 3 }),
+    song(
+        's25',
+        88,
+        'R:2 D4 | G4:2 B4:.5 G4:.5 | B4:2 A4 | G4:2 E4 | D4:2 D4 | G4:2 B4:.5 G4:.5 | B4:2 A4 | D5:3 | R:2 B4 | D5:1.5 B4:.5 D5:.5 B4:.5 | G4:2 D4 | E4:1.5 G4:.5 G4:.5 E4:.5 | D4:2 D4 | G4:2 B4:.5 G4:.5 | B4:2 A4 | G4:3',
+        { meter: 3 },
+    ),
+    song(
+        's26',
+        108,
+        'R:2 D4 | G4 G4:.5 A4:.5 G4:.5 F#4:.5 | E4 E4 E4 | A4 A4:.5 B4:.5 A4:.5 G4:.5 | F#4 D4 D4 | B4 B4:.5 C5:.5 B4:.5 A4:.5 | G4 E4 D4:.5 D4:.5 | E4 A4 F#4 | G4:3',
+        { meter: 3 },
+    ),
+    song(
+        's27',
+        84,
+        'G4:1.5 A4:.5 G4 | E4:3 | G4:1.5 A4:.5 G4 | E4:3 | D5:2 D5 | B4:3 | C5:2 C5 | G4:3 | A4:2 A4 | C5:1.5 B4:.5 A4 | G4:1.5 A4:.5 G4 | E4:3 | A4:2 A4 | C5:1.5 B4:.5 A4 | G4:1.5 A4:.5 G4 | E4:3 | D5:2 D5 | F5:1.5 D5:.5 B4 | C5:3 | E5:3 | C5 G4 E4 | G4:1.5 F4:.5 D4 | C4:3',
+        { meter: 3 },
+    ),
+    song(
+        's28',
+        108,
+        'E5 B4:.5 C5:.5 D5 C5:.5 B4:.5 | A4 A4:.5 C5:.5 E5 D5:.5 C5:.5 | B4:1.5 C5:.5 D5 E5 | C5 A4 A4:2 | E5 B4:.5 C5:.5 D5 C5:.5 B4:.5 | A4 A4:.5 C5:.5 E5 D5:.5 C5:.5 | B4:1.5 C5:.5 D5 E5 | C5 A4 A4:2',
+    ),
 ];
 
 export const lessonIndex = (id) => LESSONS.findIndex((lesson) => lesson.id === id);
-export const lessonRange = (lesson) => lesson.range.map(parseNote);
+export const lessonTitle = (lesson) => t(`lessons.${lesson.id}.title`);
+export const lessonGoal = (lesson) => t(`lessons.${lesson.id}.goal`);
+export const lessonTips = (lesson) => (has(`lessons.${lesson.id}.tips`) ? tList(`lessons.${lesson.id}.tips`) : tList('lessons.songTips'));
 
 /** Expand a song string into [{ midi, beat, beats }] (rests are dropped). */
 export function parseSong(lesson) {
@@ -223,6 +155,19 @@ export function parseSong(lesson) {
         beat += beats;
     }
     return { notes, totalBeats: beat };
+}
+
+/** Keys to show: the lesson's own range, or a song's lowest to highest note. */
+export function lessonRange(lesson) {
+    if (lesson.range) return lesson.range.map(parseNote);
+    const midis = parseSong(lesson).notes.map((n) => n.midi);
+    let lo = Math.min(...midis);
+    let hi = Math.max(...midis);
+    // At least five white keys so the hand has room; end on white keys.
+    hi = Math.max(hi, lo + 7);
+    while (isBlack(lo)) lo--;
+    while (isBlack(hi)) hi++;
+    return [lo, hi];
 }
 
 /** Build the prompt list for a "find" lesson: [{ midi, hint }]. */

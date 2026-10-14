@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { isBlack } from '../core/notes.js';
 import { WHITE_TOP } from './Keyboard3D.js';
 import { makeLabel } from './labels.js';
+import { palette } from './palette.js';
 
 // The runway behind the keys. Notes travel along it toward the hit line at the
 // back edge of the keyboard; a note's length is how long it should be held.
@@ -9,7 +10,9 @@ export const HIGHWAY_LENGTH = 22;
 const HIT_Z = -0.3;
 const Y = WHITE_TOP + 0.02;
 const NOTE_HEIGHT = 0.24;
-const BEAT_LINES = 10;
+const GAP = 0.16; // space left between back-to-back notes
+const RIM = 0.07; // dark outline around every block
+const BEAT_LINES = 12;
 
 const box = new THREE.BoxGeometry(1, 1, 1);
 const STATE_COLORS = {
@@ -32,12 +35,19 @@ export class NoteHighway {
         this.unitsPerSecond = 6;
         this.secondsPerBeat = 0.75;
         this.beatsPerBar = 4;
+        this.outlineMaterial = new THREE.MeshStandardMaterial({ roughness: 0.6 });
+        this.applyPalette();
+    }
+
+    applyPalette() {
+        this.outlineMaterial.color.set(palette.outline);
+        if (this.group.visible) this.layout();
     }
 
     /** Rebuild the lanes to match the current keyboard. */
     layout() {
         this.disposeGroup(this.staticParts);
-        const w = this.keyboard.width;
+        const { width: w, unit } = this.keyboard;
         const add = (geometry, material, x, y, z) => {
             const mesh = new THREE.Mesh(geometry, material);
             mesh.position.set(x, y, z);
@@ -45,30 +55,25 @@ export class NoteHighway {
             return mesh;
         };
         const zMid = HIT_Z - HIGHWAY_LENGTH / 2;
+        const flat = (width) => new THREE.PlaneGeometry(width, HIGHWAY_LENGTH).rotateX(-Math.PI / 2);
 
-        const floor = add(
-            new THREE.BoxGeometry(w + 0.5, 0.1, HIGHWAY_LENGTH),
-            new THREE.MeshStandardMaterial({ color: 0x15152e, roughness: 0.85 }),
-            0,
-            Y - 0.07,
-            zMid,
-        );
+        const floor = add(new THREE.BoxGeometry(w + 0.5, 0.1, HIGHWAY_LENGTH), new THREE.MeshStandardMaterial({ color: palette.road, roughness: 0.85 }), 0, Y - 0.07, zMid);
         floor.receiveShadow = true;
 
-        const laneMaterial = new THREE.MeshBasicMaterial({ color: 0x0b0b1c });
-        const edgeMaterial = new THREE.MeshBasicMaterial({ color: 0x312e81 });
+        const laneMaterial = new THREE.MeshBasicMaterial({ color: palette.lane });
+        const edgeMaterial = new THREE.MeshBasicMaterial({ color: palette.edge });
         for (const key of this.keyboard.keys.values()) {
-            if (key.black) add(new THREE.PlaneGeometry(0.56, HIGHWAY_LENGTH).rotateX(-Math.PI / 2), laneMaterial, key.x, Y - 0.015, zMid);
-            else add(new THREE.PlaneGeometry(0.03, HIGHWAY_LENGTH).rotateX(-Math.PI / 2), edgeMaterial, key.x - 0.5, Y - 0.012, zMid);
+            if (key.black) add(flat(0.56 * unit), laneMaterial, key.x, Y - 0.015, zMid);
+            else add(flat(0.03), edgeMaterial, key.x - 0.5 * unit, Y - 0.012, zMid);
         }
-        add(new THREE.PlaneGeometry(0.03, HIGHWAY_LENGTH).rotateX(-Math.PI / 2), edgeMaterial, w / 2, Y - 0.012, zMid);
+        add(flat(0.03), edgeMaterial, w / 2, Y - 0.012, zMid);
 
         add(new THREE.BoxGeometry(w + 0.5, 0.07, 0.14), new THREE.MeshBasicMaterial({ color: 0x22c55e, toneMapped: false }), 0, Y + 0.02, HIT_Z);
 
         this.beatLines = [];
         const beatGeometry = new THREE.PlaneGeometry(w, 0.05).rotateX(-Math.PI / 2);
-        this.beatMaterial = new THREE.MeshBasicMaterial({ color: 0x4338ca, transparent: true, opacity: 0.55 });
-        this.barMaterial = new THREE.MeshBasicMaterial({ color: 0x818cf8, transparent: true, opacity: 0.9 });
+        this.beatMaterial = new THREE.MeshBasicMaterial({ color: palette.beat, transparent: true, opacity: 0.55 });
+        this.barMaterial = new THREE.MeshBasicMaterial({ color: palette.bar, transparent: true, opacity: 0.9 });
         for (let i = 0; i < BEAT_LINES; i++) this.beatLines.push(add(beatGeometry, this.beatMaterial, 0, Y - 0.008, 0));
     }
 
@@ -81,35 +86,43 @@ export class NoteHighway {
         this.secondsPerBeat = secondsPerBeat;
         this.beatsPerBar = beatsPerBar;
         this.unitsPerSecond = unitsPerBeat / secondsPerBeat;
+        const { unit } = this.keyboard;
         this.items = notes.map((note) => {
             const black = isBlack(note.midi);
             const material = new THREE.MeshStandardMaterial({ roughness: 0.4, transparent: true });
             const mesh = new THREE.Mesh(box, material);
-            mesh.position.x = this.keyboard.xOf(note.midi);
+            const outline = new THREE.Mesh(box, this.outlineMaterial);
+            mesh.position.x = outline.position.x = this.keyboard.xOf(note.midi);
             mesh.castShadow = true;
-            const label = makeLabel(note.label, 'note', black ? 0.5 : 0.72);
+            const label = makeLabel(note.label, 'note', (black ? 0.5 : 0.72) * unit);
             label.position.x = mesh.position.x;
-            this.noteParts.add(mesh, label);
-            return { note, mesh, material, label, width: black ? 0.5 : 0.84, base: black ? 'black' : 'white', shown: null };
+            this.noteParts.add(outline, mesh, label);
+            return { note, mesh, outline, material, label, width: (black ? 0.5 : 0.84) * unit, base: black ? 'black' : 'white', shown: null };
         });
     }
 
     update(time) {
         const v = this.unitsPerSecond;
         for (const item of this.items) {
-            const { note, mesh, label } = item;
+            const { note, mesh, outline, label } = item;
             const front = HIT_Z + (time - note.time) * v; // moves toward +z
-            const back = front - Math.max(0.35, note.dur * v - 0.12);
+            const back = front - Math.max(0.35, note.dur * v - GAP);
             const clampedFront = Math.min(front, HIT_Z);
             const clampedBack = Math.max(back, HIT_Z - HIGHWAY_LENGTH);
-            const visible = clampedFront - clampedBack > 0.02 && note.state !== 'gone';
-            mesh.visible = visible;
+            const length = clampedFront - clampedBack;
+            const visible = length > 0.02;
+            mesh.visible = outline.visible = visible;
             label.visible = visible && front <= HIT_Z + 0.01;
             if (!visible) continue;
 
-            mesh.scale.set(item.width, NOTE_HEIGHT, clampedFront - clampedBack);
-            mesh.position.set(mesh.position.x, Y + NOTE_HEIGHT / 2, (clampedFront + clampedBack) / 2);
-            label.position.set(mesh.position.x, Y + NOTE_HEIGHT + 0.012, clampedFront - 0.42);
+            const z = (clampedFront + clampedBack) / 2;
+            // The coloured block sits inside a slightly larger, lower dark block,
+            // so back-to-back notes always show a dark border between them.
+            outline.scale.set(item.width + RIM, NOTE_HEIGHT - 0.03, length);
+            outline.position.set(outline.position.x, Y + (NOTE_HEIGHT - 0.03) / 2, z);
+            mesh.scale.set(item.width - RIM, NOTE_HEIGHT, Math.max(0.01, length - RIM * 2));
+            mesh.position.set(mesh.position.x, Y + NOTE_HEIGHT / 2, z);
+            label.position.set(mesh.position.x, Y + NOTE_HEIGHT + 0.012, clampedFront - 0.5 * this.keyboard.unit);
 
             const state = note.state === 'hit' || note.state === 'miss' ? note.state : item.base;
             if (state !== item.shown) {

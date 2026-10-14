@@ -360,15 +360,15 @@
     "semantic_hash": "393c4f769b3fd434a0916d125f48b038"
   },
   "package.json": {
-    "mtime": 1791939945.1336408,
-    "seen": 1791941185.365476,
-    "ast_hash": "a52a83e051be60123c50a674557629b7",
+    "mtime": 1791946204.5048263,
+    "seen": 1791950837.3522573,
+    "ast_hash": "5dee4da61b4e29170a4df5610412e556",
     "semantic_hash": ""
   },
   "src/main.js": {
-    "mtime": 1791940569.5762486,
-    "seen": 1791941185.365487,
-    "ast_hash": "0642ef7c08cc4c915816f351848637ad",
+    "mtime": 1791950484.8805265,
+    "seen": 1791950837.3522732,
+    "ast_hash": "094b0fea9da0c6f67542292c88ec3e46",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {
@@ -762,9 +762,9 @@
     "semantic_hash": ""
   },
   "src/app.js": {
-    "mtime": 1791940567.787742,
-    "seen": 1791941185.3654778,
-    "ast_hash": "15e2e13f6853e3c2e6279994bafa4404",
+    "mtime": 1791950484.8560252,
+    "seen": 1791950837.3522596,
+    "ast_hash": "a10ef45bb4230c9cd07e7d03ca7e1d8c",
     "semantic_hash": ""
   },
   "src/audio/synth.js": {
@@ -780,15 +780,15 @@
     "semantic_hash": ""
   },
   "src/core/notes.js": {
-    "mtime": 1791940120.751172,
-    "seen": 1791941185.3654807,
-    "ast_hash": "62143154fbcf8a2517622b55d5a9919d",
+    "mtime": 1791947978.7833512,
+    "seen": 1791950837.352264,
+    "ast_hash": "8ba3dad32c79ccfc91cd4cdbb0b3f534",
     "semantic_hash": ""
   },
   "src/core/settings.js": {
-    "mtime": 1791940127.3802621,
-    "seen": 1791941185.3654814,
-    "ast_hash": "8543a3220a2d2d6cdc5a13ec98f15513",
+    "mtime": 1791947976.9624844,
+    "seen": 1791950837.352265,
+    "ast_hash": "02e6bb032d796a93c2e73358e546c53c",
     "semantic_hash": ""
   },
   "src/game/FindEngine.js": {
@@ -798,15 +798,15 @@
     "semantic_hash": ""
   },
   "src/game/TimedEngine.js": {
-    "mtime": 1791940410.540666,
-    "seen": 1791941185.365483,
-    "ast_hash": "2319b64e079e18fc13d4abc836bd65db",
+    "mtime": 1791950193.937169,
+    "seen": 1791950837.3522668,
+    "ast_hash": "32c5f082e69818be0f263893d824b5c7",
     "semantic_hash": ""
   },
   "src/game/lessons.js": {
-    "mtime": 1791940384.5105753,
-    "seen": 1791941185.3654835,
-    "ast_hash": "6424143bb338c5802196e694efcdfc2d",
+    "mtime": 1791950062.5697985,
+    "seen": 1791950837.3522675,
+    "ast_hash": "fdbbe1345983a9164de5cb9571560302",
     "semantic_hash": ""
   },
   "src/game/progress.js": {
@@ -822,9 +822,9 @@
     "semantic_hash": ""
   },
   "src/input/remoteHost.js": {
-    "mtime": 1791940173.686439,
-    "seen": 1791941185.3654857,
-    "ast_hash": "288a74d4af45eb4d80f6d4bd352ba67b",
+    "mtime": 1791950485.1665971,
+    "seen": 1791950837.3522716,
+    "ast_hash": "259b076e7c7708b65da1428f8cad341c",
     "semantic_hash": ""
   },
   "src/input/typing.js": {
@@ -834,75 +834,75 @@
     "semantic_hash": ""
   },
   "src/remote/phone.js": {
-    "mtime": 1791940585.48865,
-    "seen": 1791941185.3654878,
-    "ast_hash": "33dccfc6e7653bb25c6c81c9ecaf64a0",
+    "mtime": 1791950484.9013374,
+    "seen": 1791950837.3522742,
+    "ast_hash": "99fbf542361bb66f0cbc031d6a012f6c",
     "semantic_hash": ""
   },
   "src/three/Keyboard3D.js": {
-    "mtime": 1791940860.8457134,
-    "seen": 1791941185.3654885,
-    "ast_hash": "3fd3032441005ed8203430c515fdc170",
+    "mtime": 1791950101.4473498,
+    "seen": 1791950837.3522747,
+    "ast_hash": "cefdce8fe290ecdbe3829fef2addc0ff",
     "semantic_hash": ""
   },
   "src/three/NoteHighway.js": {
-    "mtime": 1791940293.651031,
-    "seen": 1791941185.3654895,
-    "ast_hash": "66d2ee8492ff55dbd1c06255ebf5b380",
+    "mtime": 1791950132.1547818,
+    "seen": 1791950837.3522756,
+    "ast_hash": "9f6b438a58cd27a7323ff51268820313",
     "semantic_hash": ""
   },
   "src/three/PianoScene.js": {
-    "mtime": 1791941148.730279,
-    "seen": 1791941185.3654902,
-    "ast_hash": "8216eb36966a17ab8d9063d467cfcafc",
+    "mtime": 1791950178.02227,
+    "seen": 1791950837.3522766,
+    "ast_hash": "36dc511d08711b9f531f93b920c6f954",
     "semantic_hash": ""
   },
   "src/three/labels.js": {
-    "mtime": 1791940220.9746711,
-    "seen": 1791941185.365491,
-    "ast_hash": "1ea40d54e7d93a5701044251b15d8077",
+    "mtime": 1791950082.8759696,
+    "seen": 1791950837.3522773,
+    "ast_hash": "168c7d0576b2fe573ec8d60b20a796dc",
     "semantic_hash": ""
   },
   "src/ui/devices.js": {
-    "mtime": 1791940470.055839,
-    "seen": 1791941185.3654916,
-    "ast_hash": "540e24c38d611dd0bda8676d090ca634",
+    "mtime": 1791950306.1079674,
+    "seen": 1791950837.352279,
+    "ast_hash": "4c664c8d5d4b8a902302fe315d88e2d0",
     "semantic_hash": ""
   },
   "src/ui/dom.js": {
-    "mtime": 1791940441.3082626,
-    "seen": 1791941185.365492,
-    "ast_hash": "a47f725a396007513ca130568bf2d0d9",
+    "mtime": 1791950233.2158594,
+    "seen": 1791950837.3522809,
+    "ast_hash": "7fc697e296e7c5a17f985fef3d4e9be4",
     "semantic_hash": ""
   },
   "src/ui/freePlay.js": {
-    "mtime": 1791940484.9048793,
-    "seen": 1791941185.365493,
-    "ast_hash": "3b65aba9fa57b18c750c660ea8374006",
+    "mtime": 1791950311.0117617,
+    "seen": 1791950837.3522816,
+    "ast_hash": "c89fd8a9bd158c5e50413002475aec34",
     "semantic_hash": ""
   },
   "src/ui/lessonList.js": {
-    "mtime": 1791940806.4981706,
-    "seen": 1791941185.3654938,
-    "ast_hash": "00db869baa51a3c8d4bd5d6eee58f0d6",
+    "mtime": 1791950315.368328,
+    "seen": 1791950837.3522823,
+    "ast_hash": "06ce36d85ef57a967e8b2eab3990c0e9",
     "semantic_hash": ""
   },
   "src/ui/lessonPlay.js": {
-    "mtime": 1791941148.7312799,
-    "seen": 1791941185.3654945,
-    "ast_hash": "67a001d0ce942c5bf9d93544a90f3792",
+    "mtime": 1791950415.2077928,
+    "seen": 1791950837.3522828,
+    "ast_hash": "2b202019f2e49ca8d39e2259daa334f3",
     "semantic_hash": ""
   },
   "src/ui/menu.js": {
-    "mtime": 1791940474.952127,
-    "seen": 1791941185.3654952,
-    "ast_hash": "a9fc922001682a158477f13a915c3e69",
+    "mtime": 1791950310.1524208,
+    "seen": 1791950837.3522837,
+    "ast_hash": "879ffd370a6e940b0e8dcec89c93d346",
     "semantic_hash": ""
   },
   "src/ui/staff.js": {
-    "mtime": 1791940458.4669838,
-    "seen": 1791941185.365496,
-    "ast_hash": "54d548f3f35eb0366fc2f4a742a8eeb1",
+    "mtime": 1791950815.4633982,
+    "seen": 1791950837.3522847,
+    "ast_hash": "a0de1a12f2a8a9c4432ea4e2893d9b4b",
     "semantic_hash": ""
   },
   "vite.config.js": {
@@ -915,6 +915,36 @@
     "mtime": 1791940107.427816,
     "seen": 1791941185.3655565,
     "ast_hash": "be3ec35ae53003114e671f8e47ef0a91",
+    "semantic_hash": ""
+  },
+  "src/core/i18n.js": {
+    "mtime": 1791947980.4095626,
+    "seen": 1791950837.3522618,
+    "ast_hash": "344c1c9728b5369fa5fac042a7351355",
+    "semantic_hash": ""
+  },
+  "src/i18n/en.js": {
+    "mtime": 1791948030.091073,
+    "seen": 1791950837.3522692,
+    "ast_hash": "1a31624e4872f8ed5c497eb3c1bbc09d",
+    "semantic_hash": ""
+  },
+  "src/i18n/fa.js": {
+    "mtime": 1791948320.1127253,
+    "seen": 1791950837.3522701,
+    "ast_hash": "1ff35421d6b36fbfb7758087b4d7ecf8",
+    "semantic_hash": ""
+  },
+  "src/three/palette.js": {
+    "mtime": 1791950081.1750414,
+    "seen": 1791950837.352278,
+    "ast_hash": "3ad422eaab7a6645f4a729de4fa3af1b",
+    "semantic_hash": ""
+  },
+  "src/ui/dock.js": {
+    "mtime": 1791950250.6001852,
+    "seen": 1791950837.35228,
+    "ast_hash": "1ad081cc1509e783ededb0d9079d1003",
     "semantic_hash": ""
   }
 }

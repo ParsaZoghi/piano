@@ -7,6 +7,9 @@ const defaults = {
     metronome: true,
     wait: false,
     speed: 1,
+    theme: 'dark', // dark | light
+    lang: 'en', // en | fa
+    naming: 'letters', // letters (C D E) | solfege (Do Re Mi)
 };
 
 function load() {
@@ -18,6 +21,13 @@ function load() {
 }
 
 export const settings = load();
+const listeners = new Set();
+
+/** fn(patch) runs after every change, with just the keys that changed. */
+export function onSettingsChange(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+}
 
 export function saveSettings(patch) {
     Object.assign(settings, patch);
@@ -26,4 +36,5 @@ export function saveSettings(patch) {
     } catch {
         // Storage can be unavailable (private mode); the session still works.
     }
+    for (const fn of [...listeners]) fn(patch);
 }
