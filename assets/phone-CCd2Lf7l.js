@@ -1,0 +1,17 @@
+import{c as e,h as t}from"./index-DAILP9LL.js";import{r as n,t as r}from"./dom-DXzE8Z-Q.js";var i=[0,2,4,5,7,9,11,12,14,16],a=[[1,1],[3,2],[6,4],[8,5],[10,6],[13,8],[15,9]],o=[`C`,`D`,`E`,`F`,`G`,`A`,`B`,`C`,`D`,`E`];function s(s,c){let l=c.toUpperCase();document.body.classList.add(`is-phone`);let u=r(`
+        <div class="phone">
+            <header class="phone__bar">
+                <strong class="phone__brand" lang="en">${n(`music`)}Keystage</strong>
+                <span class="status" role="status"><span class="dot" data-dot></span><span data-status>${e(`phone.connecting`)}</span></span>
+                <div class="stepper" role="group" aria-label="${e(`phone.octave`)}" dir="ltr">
+                    <button class="icon-btn" data-octave="-1" aria-label="${e(`phone.octaveDown`)}">${n(`minus`)}</button>
+                    <span class="stepper__value" data-octave-label></span>
+                    <button class="icon-btn" data-octave="1" aria-label="${e(`phone.octaveUp`)}">${n(`plus`)}</button>
+                </div>
+            </header>
+            <div class="phone__keys" data-keys dir="ltr">
+                ${i.map((e,n)=>`<button class="pkey" data-semi="${e}" aria-label="${t(o[n])}"><span>${t(o[n])}</span></button>`).join(``)}
+                ${a.map(([e,t])=>`<button class="pkey pkey--black" data-semi="${e}" style="left:${t*10}%" aria-label="♯"></button>`).join(``)}
+            </div>
+            <p class="phone__tip">${e(`phone.tip`)}</p>
+        </div>`);s.append(u);let d=u.querySelector(`[data-status]`),f=u.querySelector(`[data-dot]`),p=(t,n)=>{d.textContent=e(`phone.${t}`),f.classList.toggle(`dot--on`,n)};if(!/^[A-Z0-9]{4,8}$/.test(l)){p(`invalid`,!1);return}let m=null,h=4,g=new Map,_=u.querySelector(`[data-octave-label]`);_.textContent=`${t(`C`)}${h}`;function v(e,t){m?.readyState===WebSocket.OPEN&&m.send(JSON.stringify({t:e,n:t,v:.8}))}function y(){let e=location.protocol===`https:`?`wss`:`ws`;m=new WebSocket(`${e}://${location.host}/__remote?room=${l}&role=controller`),m.onopen=()=>p(`connected`,!1),m.onmessage=e=>{try{let t=JSON.parse(e.data);t.t===`host`&&p(t.on?`play`:`waitingHost`,t.on)}catch{}},m.onclose=()=>{p(`reconnecting`,!1),x(),setTimeout(y,1500)}}function b(e){let t=g.get(e);t&&(t.key.classList.remove(`pkey--down`),v(`off`,t.midi),g.delete(e))}function x(){for(let e of[...g.keys()])b(e)}function S(e,t){if(g.get(e)?.key===t||(b(e),!t))return;let n=(h+1)*12+Number(t.dataset.semi);t.classList.add(`pkey--down`),g.set(e,{midi:n,key:t}),v(`on`,n),navigator.vibrate?.(8)}let C=u.querySelector(`[data-keys]`),w=e=>document.elementFromPoint(e.clientX,e.clientY)?.closest(`.pkey`)||null;C.addEventListener(`pointerdown`,e=>{e.preventDefault(),S(e.pointerId,w(e))}),C.addEventListener(`pointermove`,e=>{g.has(e.pointerId)&&S(e.pointerId,w(e))});for(let e of[`pointerup`,`pointercancel`,`pointerleave`])C.addEventListener(e,e=>b(e.pointerId));C.addEventListener(`contextmenu`,e=>e.preventDefault()),u.querySelector(`.stepper`).addEventListener(`click`,e=>{let n=e.target.closest(`[data-octave]`);n&&(x(),h=Math.max(1,Math.min(6,h+Number(n.dataset.octave))),_.textContent=`${t(`C`)}${h}`)}),document.addEventListener(`visibilitychange`,()=>document.hidden&&x()),y()}export{s as mountPhone};
