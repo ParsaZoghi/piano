@@ -1,21 +1,21 @@
-/* Persian text uses Vazir, bundled locally (only woff2 is shipped). */
+/* Persian text uses Vazirmatn, bundled locally (only woff2 is shipped). */
 @font-face {
-    font-family: 'Vazir';
-    src: url('../node_modules/vazir-font/dist/Vazir-Regular.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-Regular.woff2') format('woff2');
     font-weight: 400;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Vazir';
-    src: url('../node_modules/vazir-font/dist/Vazir-Medium.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-Medium.woff2') format('woff2');
     font-weight: 500 600;
     font-display: swap;
 }
 
 @font-face {
-    font-family: 'Vazir';
-    src: url('../node_modules/vazir-font/dist/Vazir-Bold.woff2') format('woff2');
+    font-family: 'Vazirmatn';
+    src: url('../node_modules/vazirmatn/fonts/webfonts/Vazirmatn-Bold.woff2') format('woff2');
     font-weight: 700;
     font-display: swap;
 }
@@ -50,8 +50,8 @@
     --radius: 14px;
     --radius-sm: 10px;
     --shadow: 0 18px 50px rgb(0 0 0 / 0.5);
-    --font: 'Poppins', 'Vazir', 'Segoe UI', system-ui, sans-serif;
-    --font-display: 'Righteous', 'Poppins', 'Vazir', system-ui, sans-serif;
+    --font: 'Poppins', 'Vazirmatn', 'Segoe UI', system-ui, sans-serif;
+    --font-display: 'Righteous', 'Poppins', 'Vazirmatn', system-ui, sans-serif;
     --fast: 140ms;
     --slow: 260ms;
     --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -89,10 +89,10 @@
     color-scheme: light;
 }
 
-/* Persian: Vazir everywhere, including headings. */
+/* Persian: Vazirmatn everywhere, including headings. */
 :root[lang='fa'] {
-    --font: 'Vazir', 'Poppins', system-ui, sans-serif;
-    --font-display: 'Vazir', system-ui, sans-serif;
+    --font: 'Vazirmatn', 'Poppins', system-ui, sans-serif;
+    --font-display: 'Vazirmatn', system-ui, sans-serif;
 }
 
 *,
@@ -382,7 +382,7 @@ code {
 }
 
 .segmented button[lang='fa'] {
-    font-family: 'Vazir', sans-serif;
+    font-family: 'Vazirmatn', sans-serif;
 }
 
 .switch {
