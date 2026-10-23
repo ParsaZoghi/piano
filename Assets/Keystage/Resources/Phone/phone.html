@@ -1,0 +1,251 @@
+<!doctype html>
+<!-- The phone keyboard page. The Keystage game serves this file to phones on
+     the same network (see Scripts/Remote/RemoteServer.cs). Port of the web
+     version's src/remote/phone.js. Keys send notes back over a WebSocket. -->
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+        <meta name="theme-color" content="#0f0f23" />
+        <title>Keystage · Phone keyboard</title>
+        <style>
+            :root {
+                --bg: #0b0b1c;
+                --surface: #17172e;
+                --surface-2: #1f1f3d;
+                --border: #34337a;
+                --text: #f8fafc;
+                --muted: #a5b0c5;
+                --accent: #22c55e;
+                color-scheme: dark;
+            }
+            :root[data-theme='light'] {
+                --bg: #e6eaf5;
+                --surface: #ffffff;
+                --surface-2: #eef1f8;
+                --border: #c3c9e0;
+                --text: #0f172a;
+                --muted: #475569;
+                --accent: #15803d;
+                color-scheme: light;
+            }
+            * { box-sizing: border-box; }
+            html, body { height: 100%; margin: 0; }
+            body {
+                overflow: hidden;
+                overscroll-behavior: none;
+                background: var(--bg);
+                color: var(--text);
+                font: 400 16px/1.5 'Poppins', 'Vazirmatn', 'Segoe UI', system-ui, sans-serif;
+                -webkit-font-smoothing: antialiased;
+            }
+            :root[lang='fa'] body { font-family: 'Vazirmatn', 'Vazir', Tahoma, system-ui, sans-serif; }
+            button { font: inherit; color: inherit; }
+            .icon { width: 20px; height: 20px; flex: none; }
+            .phone {
+                display: flex;
+                flex-direction: column;
+                height: 100dvh;
+                padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+                user-select: none;
+                -webkit-user-select: none;
+                -webkit-touch-callout: none;
+            }
+            .phone__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 12px; }
+            .phone__brand { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.2rem; }
+            .status { display: inline-flex; flex: 1; align-items: center; gap: 8px; min-width: 10rem; color: var(--muted); font-size: 0.9rem; }
+            .dot { flex: none; width: 10px; height: 10px; border: 2px solid var(--muted); border-radius: 50%; }
+            .dot--on { border-color: var(--accent); background: var(--accent); }
+            .stepper { display: inline-flex; align-items: center; gap: 6px; }
+            .stepper__value { min-width: 2.6em; font-weight: 600; text-align: center; }
+            .icon-btn {
+                display: inline-grid; place-items: center; width: 44px; height: 44px;
+                border: 1px solid var(--border); border-radius: 50%; background: var(--surface); cursor: pointer;
+            }
+            .phone__keys { position: relative; flex: 1; display: flex; min-height: 0; margin: 0 8px; touch-action: none; }
+            .pkey {
+                flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 0 0 12px;
+                border: 1px solid #94a3b8; border-radius: 0 0 10px 10px;
+                background: linear-gradient(#ffffff, #e2e8f0); color: #475569; font-weight: 700; touch-action: none;
+            }
+            .pkey--black {
+                position: absolute; top: 0; width: 6.4%; height: 58%; border-color: #000;
+                background: linear-gradient(#2a2a3c, #0b0b14); transform: translateX(-50%);
+            }
+            .pkey--down { background: var(--accent); }
+            .phone__tip { padding: 8px 12px; color: var(--muted); font-size: 0.8rem; text-align: center; margin: 0; }
+            @media (orientation: landscape) and (max-height: 500px) { .phone__tip { display: none; } }
+        </style>
+    </head>
+    <body>
+        <div class="phone">
+            <header class="phone__bar">
+                <strong class="phone__brand" lang="en">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Keystage
+                </strong>
+                <span class="status" role="status"><span class="dot" id="dot"></span><span id="status"></span></span>
+                <div class="stepper" role="group" id="octave-group" dir="ltr">
+                    <button class="icon-btn" data-octave="-1" id="down"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+                    <span class="stepper__value" id="octave"></span>
+                    <button class="icon-btn" data-octave="1" id="up"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></button>
+                </div>
+            </header>
+            <div class="phone__keys" id="keys" dir="ltr"></div>
+            <p class="phone__tip" id="tip"></p>
+        </div>
+        <script>
+            (function () {
+                var TEXT = {
+                    en: {
+                        connecting: 'Connecting…',
+                        invalid: 'This link is not valid. Scan the code again.',
+                        connected: 'Connected. Open the game on your computer.',
+                        play: 'Connected. Play!',
+                        waitingHost: 'Waiting for the game on your computer…',
+                        reconnecting: 'Reconnecting…',
+                        octave: 'Octave',
+                        octaveDown: 'Octave down',
+                        octaveUp: 'Octave up',
+                        tip: 'Turn your phone sideways for bigger keys. Sound plays on the computer.'
+                    },
+                    fa: {
+                        connecting: 'در حال اتصال…',
+                        invalid: 'این پیوند معتبر نیست. کد را دوباره اسکن کنید.',
+                        connected: 'وصل شد. بازی را روی رایانه باز کنید.',
+                        play: 'وصل شد. بنوازید!',
+                        waitingHost: 'در انتظار بازی روی رایانه…',
+                        reconnecting: 'در حال اتصال دوباره…',
+                        octave: 'اکتاو',
+                        octaveDown: 'اکتاو پایین‌تر',
+                        octaveUp: 'اکتاو بالاتر',
+                        tip: 'برای کلیدهای بزرگ‌تر گوشی را افقی بگیرید. صدا از رایانه پخش می‌شود.'
+                    }
+                };
+                var NAMES = {
+                    letters: ['C', 'D', 'E', 'F', 'G', 'A', 'B', 'C', 'D', 'E'],
+                    solfege: ['Do', 'Re', 'Mi', 'Fa', 'Sol', 'La', 'Si', 'Do', 'Re', 'Mi']
+                };
+                var WHITE = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
+                var BLACK = [[1, 1], [3, 2], [6, 4], [8, 5], [10, 6], [13, 8], [15, 9]]; // [semitone, slot]
+
+                var params = new URLSearchParams(location.search);
+                var room = (params.get('remote') || '').toUpperCase();
+                var lang = params.get('lang') === 'fa' ? 'fa' : 'en';
+                var names = NAMES[params.get('names')] || NAMES.letters;
+                var t = TEXT[lang];
+                document.documentElement.lang = lang;
+                document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+                document.documentElement.dataset.theme = params.get('theme') === 'light' ? 'light' : 'dark';
+
+                var keys = document.getElementById('keys');
+                var statusText = document.getElementById('status');
+                var dot = document.getElementById('dot');
+                var octaveLabel = document.getElementById('octave');
+                document.getElementById('tip').textContent = t.tip;
+                document.getElementById('octave-group').setAttribute('aria-label', t.octave);
+                document.getElementById('down').setAttribute('aria-label', t.octaveDown);
+                document.getElementById('up').setAttribute('aria-label', t.octaveUp);
+
+                var html = '';
+                WHITE.forEach(function (semi, i) {
+                    html += '<button class="pkey" data-semi="' + semi + '" aria-label="' + names[i] + '"><span>' + names[i] + '</span></button>';
+                });
+                BLACK.forEach(function (b) {
+                    html += '<button class="pkey pkey--black" data-semi="' + b[0] + '" style="left:' + b[1] * 10 + '%" aria-label="&#9839;"></button>';
+                });
+                keys.innerHTML = html;
+
+                function setStatus(key, on) {
+                    statusText.textContent = t[key];
+                    dot.classList.toggle('dot--on', !!on);
+                }
+
+                var octave = 4;
+                octaveLabel.textContent = names[0] + octave;
+                if (!/^[A-Z0-9]{4,8}$/.test(room)) {
+                    setStatus('invalid', false);
+                    return;
+                }
+                setStatus('connecting', false);
+
+                var socket = null;
+                var active = new Map(); // pointerId -> { midi, key }
+
+                function send(type, midi) {
+                    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ t: type, n: midi, v: 0.8 }));
+                }
+
+                function connect() {
+                    socket = new WebSocket('ws://' + location.host + '/ws?room=' + room + '&role=controller');
+                    socket.onopen = function () { setStatus('connected', false); };
+                    socket.onmessage = function (e) {
+                        try {
+                            var msg = JSON.parse(e.data);
+                            if (msg.t === 'host') setStatus(msg.on ? 'play' : 'waitingHost', msg.on);
+                        } catch (err) {
+                            // Ignore anything that is not a game message.
+                        }
+                    };
+                    socket.onclose = function () {
+                        setStatus('reconnecting', false);
+                        releaseAll();
+                        setTimeout(connect, 1500);
+                    };
+                }
+
+                function release(pointerId) {
+                    var held = active.get(pointerId);
+                    if (!held) return;
+                    held.key.classList.remove('pkey--down');
+                    send('off', held.midi);
+                    active.delete(pointerId);
+                }
+
+                function releaseAll() {
+                    Array.from(active.keys()).forEach(release);
+                }
+
+                function press(pointerId, key) {
+                    var current = active.get(pointerId);
+                    if (current && current.key === key) return;
+                    release(pointerId);
+                    if (!key) return;
+                    var midi = (octave + 1) * 12 + Number(key.dataset.semi);
+                    key.classList.add('pkey--down');
+                    active.set(pointerId, { midi: midi, key: key });
+                    send('on', midi);
+                    if (navigator.vibrate) navigator.vibrate(8);
+                }
+
+                function keyUnder(e) {
+                    var el = document.elementFromPoint(e.clientX, e.clientY);
+                    return el ? el.closest('.pkey') : null;
+                }
+
+                keys.addEventListener('pointerdown', function (e) {
+                    e.preventDefault();
+                    press(e.pointerId, keyUnder(e));
+                });
+                // Sliding a finger across the keys plays each one.
+                keys.addEventListener('pointermove', function (e) {
+                    if (active.has(e.pointerId)) press(e.pointerId, keyUnder(e));
+                });
+                ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (type) {
+                    keys.addEventListener(type, function (e) { release(e.pointerId); });
+                });
+                keys.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+                document.querySelector('.stepper').addEventListener('click', function (e) {
+                    var button = e.target.closest('[data-octave]');
+                    if (!button) return;
+                    releaseAll();
+                    octave = Math.max(1, Math.min(6, octave + Number(button.dataset.octave)));
+                    octaveLabel.textContent = names[0] + octave;
+                });
+
+                document.addEventListener('visibilitychange', function () { if (document.hidden) releaseAll(); });
+                connect();
+            })();
+        </script>
+    </body>
+</html>
